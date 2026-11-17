@@ -103,6 +103,7 @@
     /* type: 'midgame' | 'rewarded'. Resolves true when the ad completed
        (reward may be granted). Standalone builds grant rewarded instantly. */
     ad(type) {
+      if (G.save) G.save.flush();               // an ad is a common moment for players to leave
       return new Promise(resolve => {
         if (!this.ready) { resolve(type === 'rewarded'); return; }
         const wasPlaying = this.playing;
@@ -126,15 +127,46 @@
       });
     },
 
-    getItem(k) {
-      try { if (this.ready && this.api.data) return this.api.data.getItem(k); } catch (e) { /* fall through */ }
-      try { return window.localStorage.getItem(k); } catch (e) { return null; }
+    /* ---- storage ----
+       On CrazyGames the SDK data module is the ONLY place progress is written
+       (it keeps guests' data locally and logged-in players' data in their
+       account). localStorage is used only when the SDK is unavailable
+       (standalone/offline builds), and is read once to import an old save.
+       The backend is chosen once, so a save is never split between stores. */
+    backend: 'memory',
+    pickBackend() {
+      const d = this.ready && this.api && this.api.data;
+      if (d && typeof d.getItem === 'function' && typeof d.setItem === 'function') this.backend = 'crazygames';
+      else if (localOK()) this.backend = 'local';
+      else this.backend = 'memory';
+      return this.backend;
     },
+    getItem(k) {
+      try {
+        if (this.backend === 'crazygames') { const v = this.api.data.getItem(k); return v == null ? null : v; }
+        if (this.backend === 'local') return window.localStorage.getItem(k);
+      } catch (e) { console.warn('[save] read failed (' + this.backend + ')', e); }
+      return null;
+    },
+    /* returns true when the write was accepted */
     setItem(k, v) {
-      try { if (this.ready && this.api.data) { this.api.data.setItem(k, v); return; } } catch (e) { /* fall through */ }
-      try { window.localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ }
+      try {
+        if (this.backend === 'crazygames') { this.api.data.setItem(k, v); return true; }
+        if (this.backend === 'local') { window.localStorage.setItem(k, v); return true; }
+      } catch (e) { console.warn('[save] write failed (' + this.backend + ')', e); return false; }
+      return false;
+    },
+    removeItem(k) {
+      try {
+        if (this.backend === 'crazygames' && this.api.data.removeItem) this.api.data.removeItem(k);
+        else if (this.backend === 'local') window.localStorage.removeItem(k);
+      } catch (e) { /* ignore */ }
     }
   };
+  function localOK() {
+    try { const t = '__gm_probe'; window.localStorage.setItem(t, '1'); window.localStorage.removeItem(t); return true; } catch (e) { return false; }
+  }
+  function localGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
 
   /* ------------------------------------------------------------------ */
   /* Save data                                                           */
@@ -148,24 +180,62 @@
     settings: { music: 0.7, sfx: 0.8, speed: 1 },
     seen: {}, current: null, caseNo: 0
   });
-  G.save = {
-    d: defaults(), _t: null,
-    load() {
-      try {
-        const raw = sdk.getItem(KEY);
-        if (raw) {
-          const o = JSON.parse(raw), d = defaults();
-          this.d = Object.assign(d, o);
-          this.d.stats = Object.assign(defaults().stats, o.stats || {});
-          this.d.settings = Object.assign(defaults().settings, o.settings || {});
-          this.d.daily = Object.assign(defaults().daily, o.daily || {});
-        }
-      } catch (e) { console.warn('save load failed', e); this.d = defaults(); }
-    },
-    commit() {
-      clearTimeout(this._t);
-      this._t = setTimeout(() => { try { sdk.setItem(KEY, JSON.stringify(this.d)); } catch (e) { /* ignore */ } }, 150);
-    },
-    reset() { this.d = defaults(); this.commit(); }
+  const parse = raw => {
+    const o = JSON.parse(raw), d = Object.assign(defaults(), o);
+    d.stats = Object.assign(defaults().stats, o.stats || {});
+    d.settings = Object.assign(defaults().settings, o.settings || {});
+    d.daily = Object.assign(defaults().daily, o.daily || {});
+    return d;
   };
+  const MAX_BYTES = 900 * 1024;   // stay well inside the data module's size budget
+  G.save = {
+    d: defaults(), _t: null, _dirty: false, loadedFrom: 'new', lastOk: 0,
+    /* call after G.sdk.init() */
+    load() {
+      sdk.pickBackend();
+      let raw = sdk.getItem(KEY);
+      this.loadedFrom = raw ? sdk.backend : 'new';
+      if (!raw && sdk.backend === 'crazygames') {
+        /* one-time import of a save made before the data module was in use */
+        raw = localGet(KEY);
+        if (raw) this.loadedFrom = 'imported';
+      }
+      try { this.d = raw ? parse(raw) : defaults(); }
+      catch (e) { console.warn('[save] corrupt save ignored', e); this.d = defaults(); this.loadedFrom = 'new'; }
+      if (this.loadedFrom === 'imported') { this._dirty = true; this.flush(); }
+      return this.loadedFrom;
+    },
+    /* mark dirty; written shortly after, or immediately on flush() */
+    commit() {
+      this._dirty = true;
+      clearTimeout(this._t);
+      this._t = setTimeout(() => this.flush(), 300);
+    },
+    flush() {
+      clearTimeout(this._t); this._t = null;
+      if (!this._dirty) return true;
+      this.d.savedAt = Date.now();
+      let json = JSON.stringify(this.d);
+      if (json.length > MAX_BYTES) {           // never expected, but never fail a save over history
+        this.d.archive = this.d.archive.slice(-10);
+        json = JSON.stringify(this.d);
+      }
+      const ok = sdk.setItem(KEY, json);
+      if (ok) { this._dirty = false; this.lastOk = Date.now(); }
+      return ok;                                // on failure stays dirty and retries next commit/flush
+    },
+    /* save right now — use after any change the player must not lose (results, purchases) */
+    write() { this._dirty = true; return this.flush(); },
+    reset() { this.d = defaults(); this.write(); },
+    where() {
+      return sdk.backend === 'crazygames' ? 'Progress is saved with CrazyGames — log in to keep it across devices.'
+        : sdk.backend === 'local' ? 'Progress is saved in this browser.'
+          : 'Saving is unavailable in this browser — progress will be lost on exit.';
+    }
+  };
+  /* never lose the last few hundred ms of progress when the tab closes or hides */
+  const flushNow = () => { try { G.save.flush(); } catch (e) { /* ignore */ } };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flushNow(); });
+  window.addEventListener('pagehide', flushNow);
+  window.addEventListener('beforeunload', flushNow);
 })();

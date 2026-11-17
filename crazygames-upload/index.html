@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Gilded Midnight — A Deco Noir Mystery</title>
+<meta name="description" content="An endless art-deco murder mystery. Search the scene, break the alibis, name the killer before dawn.">
+<link rel="preload" href="fonts/limelight-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css">
+<!-- CrazyGames SDK v3. The game degrades gracefully to standalone mode if it is unavailable. -->
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+</head>
+<body>
+<div id="stage">
+  <canvas id="bg" width="1280" height="720"></canvas>
+  <div id="vig"></div>
+  <div id="grain"></div>
+  <div id="ui"></div>
+  <div id="hud"></div>
+  <div id="modal"></div>
+  <div id="toast"></div>
+  <div id="doors"><div class="door l"></div><div class="door r"></div><div id="doors-label"></div></div>
+  <div id="loading">
+    <div class="ld-burst"></div>
+    <div class="ld-top">A DECO NOIR MYSTERY</div>
+    <div class="ld-logo">GILDED<br>MIDNIGHT</div>
+    <div id="load-bar"><i></i></div>
+    <div class="ld-go">— Click to begin —</div>
+    <div class="ld-note">Best with sound on</div>
+  </div>
+</div>
+<div id="rotate">◆ Rotate your device ◆</div>
+<script src="js/core.js"></script>
+<script src="js/data.js"></script>
+<script src="js/art.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/gen.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/mini.js"></script>
+<script src="js/game.js"></script>
+<script src="js/case.js"></script>
+</body>
+</html>

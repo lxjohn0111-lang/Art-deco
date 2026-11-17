@@ -305,3 +305,4 @@ tr.clear td { opacity: .42; } tr.clear td:last-child { opacity: 1; } tr.sus td.w
 /* portrait phones: the stage letterboxes, so nudge the player to rotate */
 #rotate { display: none; position: fixed; left: 0; right: 0; bottom: 8%; text-align: center; font: 400 18px 'Poiret One', 'Century Gothic', sans-serif; letter-spacing: .28em; text-transform: uppercase; color: #f4dd9a; pointer-events: none; }
 @media (orientation: portrait) and (max-width: 720px) { #rotate { display: block; } }
+.save-where { font-size: 14px !important; opacity: .7; font-style: italic; margin: 14px 0 0; }

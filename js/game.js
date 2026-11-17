@@ -234,7 +234,7 @@
           const u = D.upgrades.find(x => x.id === b.dataset.u), cost = G.upCost(u);
           if (d.cash < cost) return;
           d.cash -= cost; d.upgrades[u.id] = G.upLevel(u.id) + 1;
-          sfx('cash'); G.save.commit(); G.checkAch(); draw();
+          sfx('cash'); G.checkAch(); G.save.write(); draw();
         };
       });
       bind(o.node);
@@ -271,10 +271,11 @@
       <label class="slider"><span>Music</span><input type="range" min="0" max="100" value="${Math.round(st.music * 100)}" data-k="music"></label>
       <label class="slider"><span>Sound effects</span><input type="range" min="0" max="100" value="${Math.round(st.sfx * 100)}" data-k="sfx"></label>
       <label class="slider"><span>Text speed</span><input type="range" min="50" max="400" value="${Math.round(st.speed * 100)}" data-k="speed"></label>
+      <p class="save-where">${G.save.where()}</p>
       <div class="row"><button class="btn" data-close>Done</button><button class="btn danger" data-reset>Erase Save</button></div></div>`);
     $$('input', o.node).forEach(i => {
       i.oninput = () => { st[i.dataset.k] = i.value / 100; G.audio.setVol(st.music, st.sfx); G.save.commit(); };
-      i.onchange = () => sfx('found');
+      i.onchange = () => { sfx('found'); G.save.write(); };
     });
     $('[data-reset]', o.node).onclick = async () => {
       if (await G.confirm('Erase Everything?', 'Your rank, cash, upgrades and case files will be gone for good.', 'Erase', 'Keep')) { G.save.reset(); o.close(); G.showMenu(); }

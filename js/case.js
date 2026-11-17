@@ -523,7 +523,7 @@
     if (ok && found === total) G.award('thorough');
     if (ok && C.tier === 3 && !boss && !daily) G.award('legend');
     if (ok && daily) G.award('daily1');
-    G.checkAch(); G.save.commit();
+    G.checkAch(); G.save.write();
     const rank = G.rankOf(d.xp);
     return { lines, raw, grade, score, cash, xp, threads, streakMult, mult: T.mult, rankUp: rank.i > prevRank ? rank.name : null, wOk, mOk };
   }
@@ -554,7 +554,7 @@
     const dbl = $('[data-dbl]', ui());
     if (dbl) dbl.onclick = async () => {
       dbl.disabled = true;
-      if (await G.sdk.ad('rewarded')) { d.cash += R.cash; d.earned += R.cash; G.save.commit(); G.checkAch(); sfx('cash'); dbl.innerHTML = G.icon('check', 16) + ' Fee doubled'; $('.cashrw b', ui()).textContent = G.money(R.cash * 2); }
+      if (await G.sdk.ad('rewarded')) { d.cash += R.cash; d.earned += R.cash; G.checkAch(); G.save.write(); sfx('cash'); dbl.innerHTML = G.icon('check', 16) + ' Fee doubled'; $('.cashrw b', ui()).textContent = G.money(R.cash * 2); }
       else { dbl.disabled = false; G.toast('No ad available right now.'); }
     };
     $('[data-next]', ui()).onclick = async () => {

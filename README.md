@@ -44,8 +44,22 @@ fully offline:
 | `game.happytime()` | S rank, promotion, Kingpin defeated |
 | `ad.requestAd('midgame')` | between cases ("Next Case") |
 | `ad.requestAd('rewarded')` | extra informant tip · +45 minutes at dawn · double the fee |
-| `data.getItem / setItem` | save data (falls back to `localStorage`) |
+| `data.getItem / setItem` | all save data — see below |
 | `game.settings.muteAudio` + change listener | global mute; audio is also muted while an ad plays |
+
+### Saving
+
+On CrazyGames, progress (rank, cash, upgrades, achievements, stats, archive, settings and the case in progress) is
+stored **only** through the SDK data module, under one key, `gilded_midnight_save_v1`:
+
+- The storage backend is picked once after `SDK.init()`. When the data module is available the game never writes
+  its own `localStorage` key, so a save can't be split between two stores.
+- Changes are written 300 ms after they happen, and **immediately** for case results, purchases, rewarded-ad
+  rewards and settings, before every ad, and when the tab is hidden or closed (`visibilitychange`, `pagehide`).
+- A failed write keeps the save marked dirty and retries on the next change; it does not fall back to `localStorage`.
+- A save left in `localStorage` from an earlier standalone build is imported into the data module once.
+- Without the SDK (offline, or a host where the SDK is disabled) the game falls back to `localStorage`.
+- Settings tells the player where progress is kept.
 
 ## Running locally
 
@@ -57,9 +71,22 @@ python3 -m http.server 8000   # then open http://localhost:8000
 
 ## Submitting to CrazyGames
 
-Zip the repository contents (`index.html` at the root of the zip, with `css/`, `js/`, `fonts/`) and upload it in the
-CrazyGames Developer Portal as an HTML5 game. Recommended settings: landscape orientation, 16:9, mouse + touch +
-keyboard (`N` notebook, `M` map, `Esc` close, `Space`/arrows in mini-games).
+The upload is ready in two forms:
+
+- `crazygames-upload/` — just the game files, `index.html` at the root
+- `gilded-midnight-crazygames.zip` — the same files zipped, `index.html` at the zip root
+
+Upload either one in the CrazyGames Developer Portal as an HTML5 game. After changing the source, rebuild both with:
+
+```bash
+./build-crazygames.sh
+```
+
+The script copies only the game files (no README, git or tooling), checks that every file `index.html` and the
+stylesheet reference is present and that the SDK v3 script tag is there, then writes the zip.
+
+Recommended portal settings: landscape orientation, 16:9, mouse + touch + keyboard (`N` notebook, `M` map,
+`Esc` close, `Space`/arrows in mini-games).
 
 ## Project layout
 
