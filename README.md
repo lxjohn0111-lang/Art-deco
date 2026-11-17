@@ -71,19 +71,21 @@ python3 -m http.server 8000   # then open http://localhost:8000
 
 ## Submitting to CrazyGames
 
-The upload is ready in two forms:
+The upload is a **single self-contained `index.html`**: the stylesheet, all scripts and the fonts are inlined, so the
+upload works however the files are selected or dragged into the portal. Only the CrazyGames SDK is loaded from its
+own URL, as CrazyGames requires.
 
-- `crazygames-upload/` — just the game files, `index.html` at the root
-- `gilded-midnight-crazygames.zip` — the same files zipped, `index.html` at the zip root
+- `crazygames-upload/index.html` — upload this file
+- `gilded-midnight-crazygames.zip` — the same file zipped, if the portal asks for a zip
 
-Upload either one in the CrazyGames Developer Portal as an HTML5 game. After changing the source, rebuild both with:
+After changing the source, rebuild both with:
 
 ```bash
 ./build-crazygames.sh
 ```
 
-The script copies only the game files (no README, git or tooling), checks that every file `index.html` and the
-stylesheet reference is present and that the SDK v3 script tag is there, then writes the zip.
+The script inlines everything, checks that no local file is still referenced and that the SDK v3 script tag is
+present, then writes the zip.
 
 Recommended portal settings: landscape orientation, 16:9, mouse + touch + keyboard (`N` notebook, `M` map,
 `Esc` close, `Space`/arrows in mini-games).
